@@ -3,6 +3,7 @@
 // Ideal para: sesión, token, preferencias globales.
 
 import 'package:get/get.dart';
+import 'package:getx/controllers/home_controller.dart';
 import '../routes.dart';
 
 // Extiende GetxService (no GetxController) → no se destruye nunca
@@ -40,11 +41,19 @@ class AuthService extends GetxService {
     await _saveToken(token.value);
   }
 
-  // logout: limpia estado y redirige al login eliminando todo el stack
+  // 🆕 logout CORREGIDO: limpia estado, el carrito y redirige al login
   Future<void> logout() async {
     token.value = '';
     isLoggedIn.value = false;
     userData.clear();
+    
+    // 🆕 Limpiar el carrito al hacer logout
+    // Verificar si HomeController está registrado antes de acceder
+    if (Get.isRegistered<HomeController>()) {
+      final homeController = Get.find<HomeController>();
+      homeController.resetCart();
+    }
+    
     await _clearToken();
     // offAll: navega y limpia TODO el navigation stack
     Get.offAllNamed(AppRoutes.login);

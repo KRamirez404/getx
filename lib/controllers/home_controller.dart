@@ -43,14 +43,32 @@ class HomeController extends GetxController {
       (_) => _applyFilter(),
       time: const Duration(milliseconds: 400),
     );
+    
+    // 🆕 MONITOREO AUTOMÁTICO: Cada vez que el carrito cambia,
+    // verifica que ninguna cantidad exceda el stock disponible
+    ever(cart, (_) => _validateCartAgainstStock());
   }
 
   // loadProducts: llama a la API y actualiza el estado reactivo
   Future<void> loadProducts() async {
     isLoading.value = true; // activa spinner
-    products.value = await _api.getProducts(); // actualiza RxList
-    filtered.value = products; // inicializa la lista filtrada
-    isLoading.value = false; // desactiva spinner
+    try {
+      products.value = await _api.getProducts(); // actualiza RxList
+      filtered.value = products; // inicializa la lista filtrada
+    } catch (e) {
+      // Manejo de error: muestra mensaje y deja lista vacía
+      Get.snackbar(
+        'Error',
+        'No se pudieron cargar los productos',
+        snackPosition: SnackPosition.BOTTOM,
+        //backgroundColor: Colors.red,
+        //colorText: Colors.white,
+      );
+      products.value = [];
+      filtered.value = [];
+    } finally {
+      isLoading.value = false; // desactiva spinner
+    }
   }
 
   // _applyFilter: filtra products según searchQuery
@@ -62,15 +80,113 @@ class HomeController extends GetxController {
         : products.where((p) => p.name.toLowerCase().contains(q)).toList();
   }
 
-  // addToCart: agrega o incrementa un producto en el carrito (RxMap)
+  // 🆕 _validateCartAgainstStock: corrige automáticamente cantidades 
+  // que excedan el stock disponible (útil si el stock cambia externamente)
+  void _validateCartAgainstStock() {
+    bool hasChanges = false;
+    
+    // Crear una copia para iterar mientras modificamos el original
+    final cartCopy = Map<int, int>.from(cart);
+    
+    for (var entry in cartCopy.entries) {
+      final productId = entry.key;
+      final quantityInCart = entry.value;
+      
+      // Buscar el producto actualizado (con su stock actual)
+      final product = products.firstWhere(
+        (p) => p.id == productId,
+        orElse: () => Product(id: productId, name: '', price: 0, stock: 0),
+      );
+      
+      // Si el producto ya no existe o su stock es 0, eliminar del carrito
+      if (product.stock == 0) {
+        cart.remove(productId);
+        hasChanges = true;
+        
+        Get.snackbar(
+          'Producto eliminado',
+          '${product.name} ya no está disponible',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+      } 
+      // Si la cantidad en carrito excede el stock, ajustar al stock máximo
+      else if (quantityInCart > product.stock) {
+        cart[productId] = product.stock;
+        hasChanges = true;
+        
+        Get.snackbar(
+          'Cantidad ajustada',
+          '${product.name}: ahora ${product.stock} unidades (stock máximo)',
+          snackPosition: SnackPosition.BOTTOM,
+        //  backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 2),
+        );
+      }
+    }
+    
+    // Si hubo cambios, forzar actualización de la UI
+    if (hasChanges) {
+      cart.refresh();
+    }
+  }
+
+  // 🆕 addToCart CORREGIDO: agrega o incrementa un producto en el carrito 
+  // respetando el stock disponible
   void addToCart(Product product) {
-    if (product.stock == 0) {
-      // Get.snackbar: muestra notificación SIN necesitar BuildContext
-      Get.snackbar('Sin stock', '${product.name} no tiene stock');
+    // Obtener la cantidad actual en el carrito (0 si no existe)
+    final currentQuantityInCart = cart[product.id] ?? 0;
+    
+    // Verificar si ya alcanzó el límite de stock
+    if (currentQuantityInCart >= product.stock) {
+      // Mostrar mensaje diferente según si hay algo de stock o no
+      if (product.stock == 0) {
+        Get.snackbar(
+          'Sin stock',
+          '${product.name} no tiene stock disponible',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+      } else {
+        Get.snackbar(
+          'Stock agotado',
+          'No puedes agregar más ${product.name}. Stock disponible: ${product.stock}',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+      }
       return;
     }
-    // RxMap: la asignación directa dispara reactividad
-    cart[product.id] = (cart[product.id] ?? 0) + 1;
+    
+    // Agregar una unidad (solo si hay stock disponible)
+    cart[product.id] = currentQuantityInCart + 1;
+    
+     }
+
+  // 🆕 addMultipleToCart: agrega múltiples unidades de una vez (útil para steppers)
+  void addMultipleToCart(Product product, int quantity) {
+    final currentQuantityInCart = cart[product.id] ?? 0;
+    final availableStock = product.stock - currentQuantityInCart;
+    
+    // Validar que la cantidad solicitada no exceda el stock disponible
+    if (quantity > availableStock) {
+      Get.defaultDialog(
+        title: 'Stock insuficiente',
+        middleText: 'Solo puedes agregar $availableStock unidades más de ${product.name}',
+        onConfirm: () {
+          if (availableStock > 0) {
+            cart[product.id] = currentQuantityInCart + availableStock;
+          }
+          Get.back();
+        },
+        textConfirm: 'Agregar $availableStock',
+        textCancel: 'Cancelar',
+      );
+      return;
+    }
+    
+    // Agregar la cantidad solicitada
+    cart[product.id] = currentQuantityInCart + quantity;
   }
 
   // goToCart: navega a /cart por nombre de ruta
@@ -78,6 +194,11 @@ class HomeController extends GetxController {
     AppRoutes.cart,
     arguments: {'cart': cart, 'products': products},
   );
+
+  // 🆕 resetCart: limpia el carrito (útil para logout)
+  void resetCart() {
+    cart.clear();
+  }
 
   @override
   void onClose() {

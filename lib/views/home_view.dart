@@ -29,11 +29,19 @@ class HomeView extends GetView<HomeController> {
             ),
           ),
 
-          // AuthController: obtenemos el segundo controller con find
+          // Botón de logout con confirmación
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: Get.find<AuthController>()
-                .logout, // llama logout en el servicio
+            onPressed: () => Get.defaultDialog(
+              title: 'Cerrar sesión',
+              middleText: '¿Estás seguro que quieres salir?',
+              onConfirm: () {
+                Get.back();
+                Get.find<AuthController>().logout();
+              },
+              textConfirm: 'Sí, salir',
+              textCancel: 'Cancelar',
+            ),
           ),
         ],
       ),
@@ -44,43 +52,97 @@ class HomeView extends GetView<HomeController> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
+              maxLength: 50, // Límite de caracteres para optimizar rendimiento
               decoration: const InputDecoration(
                 hintText: 'Buscar producto...',
                 prefixIcon: Icon(Icons.search),
+                counterText: '', // Oculta el contador (opcional)
               ),
               // onChanged: actualiza el observable → debounce activa _applyFilter
               onChanged: (v) => controller.searchQuery.value = v,
             ),
           ),
 
-          // Obx: escucha isLoading y filtered simultáneamente
+          // UI optimizada: separa el loading de la lista
           Expanded(
-            child: Obx(() {
-              // Si está cargando: muestra spinner
-              if (controller.isLoading.value) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              // Si no hay resultados: mensaje vacío
-              if (controller.filtered.isEmpty) {
-                return const Center(child: Text('Sin resultados'));
-              }
-              // Lista reactiva: se reconstruye al cambiar filtered
-              return ListView.builder(
-                itemCount: controller.filtered.length, // reactivo
-                itemBuilder: (_, i) {
-                  final product = controller.filtered[i];
-                  return ListTile(
-                    title: Text(product.name),
-                    subtitle: Text('\$${product.price}'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.add_shopping_cart),
-                      // addToCart: actualiza RxMap cart → cartCount cambia → Badge se reconstruye
-                      onPressed: () => controller.addToCart(product),
-                    ),
-                  );
-                },
-              );
-            }),
+            child: Stack(
+              children: [
+                // Lista de productos (visible cuando NO está cargando)
+                Obx(() => Visibility(
+                  visible: !controller.isLoading.value,
+                  child: controller.filtered.isEmpty
+                      ? const Center(child: Text('Sin resultados'))
+                      : ListView.builder(
+                          itemCount: controller.filtered.length,
+                          itemBuilder: (_, i) {
+                            final product = controller.filtered[i];
+                            final currentInCart = controller.cart[product.id] ?? 0;
+                            final isMaxStock = currentInCart >= product.stock;
+                            
+                            return ListTile(
+                              title: Text(product.name),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('\$${product.price.toStringAsFixed(0)}'),
+                                  if (product.stock < 5 && product.stock > 0)
+                                    Text(
+                                      '⚠️ Solo quedan ${product.stock} unidades',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                  if (currentInCart > 0)
+                                    Text(
+                                      'En carrito: $currentInCart / ${product.stock}',
+                                      style: const TextStyle(
+                                        fontSize: 12, 
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // 🆕 Botón de decremento (si ya hay unidades en carrito)
+                                  if (currentInCart > 0)
+                                    IconButton(
+                                      icon: const Icon(Icons.remove, size: 20),
+                                      onPressed: () {
+                                        // Reducir cantidad o eliminar si llega a 0
+                                        if (currentInCart == 1) {
+                                          controller.cart.remove(product.id);
+                                        } else {
+                                          controller.cart[product.id] = currentInCart - 1;
+                                        }
+                                      },
+                                    ),
+                                  // Botón de agregar (deshabilitado si no hay stock)
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.add_shopping_cart,
+                                      color: isMaxStock ? Colors.grey : null,
+                                    ),
+                                    onPressed: isMaxStock 
+                                        ? null // Deshabilitar si ya no hay stock
+                                        : () => controller.addToCart(product),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                )),
+                
+                // Indicador de carga (visible cuando está cargando)
+                Obx(() => Visibility(
+                  visible: controller.isLoading.value,
+                  child: const Center(child: CircularProgressIndicator()),
+                )),
+              ],
+            ),
           ),
         ],
       ),
