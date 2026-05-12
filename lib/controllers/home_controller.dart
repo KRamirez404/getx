@@ -44,7 +44,7 @@ class HomeController extends GetxController {
       time: const Duration(milliseconds: 400),
     );
     
-    // 🆕 MONITOREO AUTOMÁTICO: Cada vez que el carrito cambia,
+    // MONITOREO AUTOMÁTICO: Cada vez que el carrito cambia,
     // verifica que ninguna cantidad exceda el stock disponible
     ever(cart, (_) => _validateCartAgainstStock());
   }
@@ -71,7 +71,7 @@ class HomeController extends GetxController {
     }
   }
 
-  // _applyFilter: filtra products según searchQuery
+  // filtra products según searchQuery
   void _applyFilter() {
     final q = searchQuery.value.toLowerCase();
     // Si la query está vacía, muestra todos
@@ -80,7 +80,7 @@ class HomeController extends GetxController {
         : products.where((p) => p.name.toLowerCase().contains(q)).toList();
   }
 
-  // 🆕 _validateCartAgainstStock: corrige automáticamente cantidades 
+  //  corrige automáticamente cantidades 
   // que excedan el stock disponible (útil si el stock cambia externamente)
   void _validateCartAgainstStock() {
     bool hasChanges = false;
@@ -131,7 +131,7 @@ class HomeController extends GetxController {
     }
   }
 
-  // 🆕 addToCart CORREGIDO: agrega o incrementa un producto en el carrito 
+  // agrega o incrementa un producto en el carrito 
   // respetando el stock disponible
   void addToCart(Product product) {
     // Obtener la cantidad actual en el carrito (0 si no existe)
@@ -163,7 +163,7 @@ class HomeController extends GetxController {
     
      }
 
-  // 🆕 addMultipleToCart: agrega múltiples unidades de una vez (útil para steppers)
+  // agrega múltiples unidades de una vez (útil para steppers)
   void addMultipleToCart(Product product, int quantity) {
     final currentQuantityInCart = cart[product.id] ?? 0;
     final availableStock = product.stock - currentQuantityInCart;
@@ -195,7 +195,7 @@ class HomeController extends GetxController {
     arguments: {'cart': cart, 'products': products},
   );
 
-  // 🆕 resetCart: limpia el carrito (útil para logout)
+  // resetCart: limpia el carrito (útil para logout)
   void resetCart() {
     cart.clear();
   }

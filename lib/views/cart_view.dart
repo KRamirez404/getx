@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/cart_controller.dart';
+import '../controllers/home_controller.dart';
 
 class CartView extends GetView<CartController> {
   const CartView({super.key});
@@ -15,17 +16,18 @@ class CartView extends GetView<CartController> {
       appBar: AppBar(
         title: const Text('Mi Carrito'),
         actions: [
-          // 🆕 Botón para vaciar el carrito
+          // Botón para vaciar el carrito
           IconButton(
             icon: const Icon(Icons.delete_sweep),
-            onPressed: () {
-              Get.defaultDialog(
-                title: 'Vaciar carrito',
-                middleText: '¿Eliminar todos los productos?',
-                onConfirm: () {
-                  controller.items.clear();
-                  Get.back();
-                },
+                onPressed: () {
+                  Get.defaultDialog(
+                    title: 'Vaciar carrito',
+                    middleText: '¿Eliminar todos los productos?',
+                    onConfirm: () {
+                      controller.items.clear();
+                      Get.find<HomeController>().cart.clear();
+                      Get.back();
+                    },
                 textConfirm: 'Sí, vaciar',
                 textCancel: 'Cancelar',
               );
@@ -70,7 +72,7 @@ class CartView extends GetView<CartController> {
                                   'Subtotal: \$${(product.price * quantity).toStringAsFixed(0)}',
                                   style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
-                                // 🆕 Mostrar advertencia si está cerca del stock
+                                // Mostrar advertencia si está cerca del stock
                                 if (quantity == product.stock && product.stock > 0)
                                   const Text(
                                     '⚠️ Máximo stock alcanzado',

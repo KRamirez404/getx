@@ -6,9 +6,11 @@ import 'package:get/get.dart';
 import '../routes.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
+import 'home_controller.dart';
 
 class CartController extends GetxController {
   final _api = Get.find<ApiService>(); // servicio global ya inicializado
+  final _homeCtrl = Get.find<HomeController>(); // referencia al HomeController
 
   // items: RxList de mapas {product, quantity}.
   // Obx en la UI se reconstruye al agregar/quitar items.
@@ -24,7 +26,7 @@ class CartController extends GetxController {
   // (demostramos el patrón manual también)
   bool checkoutDone = false;
   
-  // 🆕 Flag para prevenir race conditions en checkout
+  // Flag para prevenir race conditions en checkout
   bool _isProcessing = false;
 
   @override
@@ -51,7 +53,7 @@ class CartController extends GetxController {
     ever(items, (_) => _recalcTotal());
     _recalcTotal(); // calcula el total inicial
     
-    // 🆕 Monitorear cambios en items para validar stock
+    //  Monitorear cambios en items para validar stock
     ever(items, (_) => _validateStockInCart());
   }
 
@@ -63,7 +65,7 @@ class CartController extends GetxController {
     });
   }
   
-  // 🆕 _validateStockInCart: verifica que ningún item exceda el stock
+  //  _validateStockInCart: verifica que ningún item exceda el stock
   void _validateStockInCart() {
     bool hasChanges = false;
     
@@ -76,6 +78,7 @@ class CartController extends GetxController {
         // Ajustar al stock máximo disponible
         if (product.stock == 0) {
           // Si no hay stock, eliminar el item
+          _homeCtrl.cart.remove(product.id); // sincroniza con HomeController
           items.removeAt(i);
           i--; // Ajustar índice después de eliminar
           hasChanges = true;
@@ -91,6 +94,7 @@ class CartController extends GetxController {
           // Ajustar cantidad al stock máximo
           item['quantity'] = product.stock;
           items[i] = item;
+          _homeCtrl.cart[product.id] = product.stock; // sincroniza con HomeController
           hasChanges = true;
           
           Get.snackbar(
@@ -109,10 +113,14 @@ class CartController extends GetxController {
     }
   }
 
-  // removeItem: quita un item de la lista (RxList dispara reactividad)
-  void removeItem(int index) => items.removeAt(index);
+  // removeItem: quita un item de la lista y sincroniza con HomeController
+  void removeItem(int index) {
+    final product = items[index]['product'] as Product;
+    _homeCtrl.cart.remove(product.id); // sincroniza con HomeController
+    items.removeAt(index);
+  }
   
-  // 🆕 updateQuantity: actualiza la cantidad de un producto específico
+  // updateQuantity: actualiza la cantidad de un producto específico
   void updateQuantity(int index, int newQuantity) {
     final item = items[index];
     final product = item['product'] as Product;
@@ -137,10 +145,11 @@ class CartController extends GetxController {
     // Actualizar cantidad
     item['quantity'] = newQuantity;
     items[index] = item; // Trigger reactividad
+    _homeCtrl.cart[product.id] = newQuantity; // sincroniza con HomeController
     _recalcTotal();
   }
 
-  // 🆕 checkout CORREGIDO: valida stock antes de procesar y previene race conditions
+  //  checkout valida stock antes de procesar y previene race conditions
   Future<void> checkout() async {
     // Prevenir múltiples checkouts simultáneos
     if (_isProcessing) return;
@@ -189,6 +198,7 @@ class CartController extends GetxController {
       
       if (success) {
         checkoutDone = true; // variable normal (no .obs)
+        _homeCtrl.cart.clear(); // sincroniza con HomeController
         items.clear(); // limpia el carrito reactivamente
         update(); // dispara GetBuilder manualmente
 
@@ -219,7 +229,7 @@ class CartController extends GetxController {
     }
   }
   
-  // 🆕 _validateStockBeforeCheckout: verifica stock antes de procesar el pago
+  // verifica stock antes de procesar el pago
   bool _validateStockBeforeCheckout() {
     bool hasError = false;
     

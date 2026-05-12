@@ -26,7 +26,7 @@ class AuthService extends GetxService {
     if (savedToken != null && savedToken.isNotEmpty) {
       token.value = savedToken; // actualiza el Rx
       isLoggedIn.value = true; // notifica a la UI
-      userData['name'] = 'Carlos García';
+    //  userData['name'] = 'Carlos García';
     }
 
     return this; // retorna la instancia para putAsync
@@ -41,13 +41,13 @@ class AuthService extends GetxService {
     await _saveToken(token.value);
   }
 
-  // 🆕 logout CORREGIDO: limpia estado, el carrito y redirige al login
+  // logout limpia estado, el carrito y redirige al login
   Future<void> logout() async {
     token.value = '';
     isLoggedIn.value = false;
     userData.clear();
     
-    // 🆕 Limpiar el carrito al hacer logout
+    // Limpiar el carrito al hacer logout
     // Verificar si HomeController está registrado antes de acceder
     if (Get.isRegistered<HomeController>()) {
       final homeController = Get.find<HomeController>();
@@ -59,7 +59,7 @@ class AuthService extends GetxService {
     Get.offAllNamed(AppRoutes.login);
   }
 
-  // Helpers privados (en producción usarías shared_preferences)
+  // Helpers privados 
   Future<String?> _loadToken() async => null;
   Future<void> _saveToken(String t) async {}
   Future<void> _clearToken() async {}

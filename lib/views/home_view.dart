@@ -106,7 +106,7 @@ class HomeView extends GetView<HomeController> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // 🆕 Botón de decremento (si ya hay unidades en carrito)
+                                  // Botón de decremento (si ya hay unidades en carrito)
                                   if (currentInCart > 0)
                                     IconButton(
                                       icon: const Icon(Icons.remove, size: 20),

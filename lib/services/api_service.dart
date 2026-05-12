@@ -7,7 +7,7 @@ import '../models/product.dart';
 class ApiService extends GetxService {
   // init: configura headers, interceptores, base URL, etc.
   Future<ApiService> init() async {
-    // Aquí: await Dio().init(), configurar interceptores, etc.
+    
     await Future.delayed(const Duration(milliseconds: 100));
     return this;
   }
@@ -18,7 +18,7 @@ class ApiService extends GetxService {
       // Simular tiempo de carga
       await Future.delayed(const Duration(milliseconds: 800));
       
-      // Datos simulados (en prod: response = await dio.get('/products'))
+      // Datos simulados 
       return [
         Product(id: 1, name: 'Camiseta Negra',  price: 49900, stock: 10),
         Product(id: 2, name: 'Jeans Slim',       price: 129900, stock: 5),
@@ -30,15 +30,12 @@ class ApiService extends GetxService {
     }
   }
 
-  // 🆕 checkout CORREGIDO: ahora recibe un formato específico
+  // checkout ahora recibe un formato específico
   Future<bool> checkout(List<Map<String, dynamic>> items) async {
     try {
       // Simular envío a API
       await Future.delayed(const Duration(seconds: 1));
       
-      // En producción: 
-      // final response = await dio.post('/checkout', data: {'items': items});
-      // return response.statusCode == 200;
       
       print('Checkout procesado: ${items.length} productos');
       return true;
